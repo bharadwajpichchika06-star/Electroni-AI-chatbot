@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ElectroChat – Your Electronics AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+{% raw %}
+<style>
+:root{--bg:#0a0a0f;--sb:#0e0e16;--panel:#12121e;--card:#1a1a2e;--bd:#252540;--ac:#00d4ff;--ac2:#7c3aed;--tx:#e8e8f0;--dim:#7878a0;--muted:#4a4a6a;--ub:#1e3a5f;--err:#ff4757;--glow:0 0 20px rgba(0,212,255,.15)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--tx);height:100vh;overflow:hidden;display:flex}
+
+/* SIDEBAR */
+#sidebar{width:300px;min-width:300px;background:var(--sb);border-right:1px solid var(--bd);display:flex;flex-direction:column;transition:width .3s;overflow:hidden}
+#sidebar.collapsed{width:0;min-width:0}
+.sb-head{padding:20px 18px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.sb-title{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.15em;color:var(--ac);text-transform:uppercase;white-space:nowrap}
+.clear-btn{font-family:'Space Mono',monospace;font-size:10px;background:transparent;border:1px solid var(--err);color:var(--err);padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .2s}
+.clear-btn:hover{background:var(--err);color:#fff}
+#history-list{flex:1;overflow-y:auto;padding:10px 8px}
+#history-list::-webkit-scrollbar{width:4px}
+#history-list::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.date-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;padding:4px 10px;margin-bottom:4px}
+.h-item{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 12px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:3px;transition:all .18s}
+.h-item:hover{background:var(--card);border-color:var(--bd)}
+.h-item.active{background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.3)}
+.h-body{flex:1;min-width:0}
+.h-time{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:4px}
+.h-preview{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h-preview strong{color:var(--tx);font-weight:600}
+.f-badge{display:inline-block;font-size:8px;padding:1px 5px;background:rgba(255,71,87,.2);border:1px solid rgba(255,71,87,.4);color:var(--err);border-radius:3px;margin-bottom:3px;font-family:'Space Mono',monospace}
+.del-btn{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#e74c3c;color:#fff;border:none;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s}
+.del-btn:hover{background:#c0392b;transform:scale(1.18)}
+.no-history{text-align:center;padding:40px 20px;color:var(--muted);font-size:12px;line-height:1.8}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{display:flex;align-items:center;gap:14px;padding:0 24px;height:64px;border-bottom:1px solid var(--bd);background:var(--panel);flex-shrink:0}
+#tog-sb{background:transparent;border:1px solid var(--bd);color:var(--dim);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:16px}
+#tog-sb:hover{border-color:var(--ac);color:var(--ac)}
+.logo-area{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--ac),var(--ac2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:var(--glow)}
+.logo-text{font-weight:800;font-size:18px;letter-spacing:-.02em}
+.logo-text span{color:var(--ac)}
+.logo-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:1px}
+.tb-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.new-btn{font-family:'Space Mono',monospace;font-size:10px;background:transparent;border:1px solid #22c55e;color:#22c55e;padding:6px 12px;border-radius:6px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.new-btn:hover{background:#22c55e;color:#000}
+.del-chat-btn{font-family:'Space Mono',monospace;font-size:10px;background:transparent;border:1px solid var(--err);color:var(--err);padding:6px 12px;border-radius:6px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.del-chat-btn:hover{background:var(--err);color:#fff}
+.del-chat-btn:disabled{opacity:.3;cursor:not-allowed}
+.del-chat-btn:disabled:hover{background:transparent;color:var(--err)}
+.status{display:flex;align-items:center;gap:7px;font-family:'Space Mono',monospace;font-size:10px;color:var(--dim)}
+.dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* CHAT */
+#chat-win{flex:1;overflow-y:auto;padding:28px 32px;display:flex;flex-direction:column;gap:20px}
+#chat-win::-webkit-scrollbar{width:5px}
+#chat-win::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+#welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;gap:16px}
+.w-icon{font-size:52px;filter:drop-shadow(0 0 20px rgba(0,212,255,.4))}
+.w-title{font-weight:800;font-size:28px;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.w-sub{color:var(--dim);font-size:14px;max-width:400px;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+.chip{background:var(--card);border:1px solid var(--bd);padding:8px 16px;border-radius:20px;font-size:12px;color:var(--dim);cursor:pointer;transition:all .2s}
+.chip:hover{border-color:var(--ac);color:var(--ac);background:rgba(0,212,255,.05)}
+.msg-row{display:flex;gap:12px;align-items:flex-start;animation:slideIn .25s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.msg-row.user{flex-direction:row-reverse}
+.av{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.av.u{background:linear-gradient(135deg,var(--ac2),#4f46e5)}
+.av.b{background:linear-gradient(135deg,var(--ac),#0891b2);box-shadow:0 0 12px rgba(0,212,255,.2)}
+.bwrap{display:flex;flex-direction:column;max-width:68%}
+.msg-row.user .bwrap{align-items:flex-end}
+.m-time{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:4px;padding:0 4px}
+.bubble{padding:13px 17px;border-radius:14px;font-size:14px;line-height:1.65;word-break:break-word}
+.bubble.user{background:var(--ub);border:1px solid rgba(0,212,255,.2);border-bottom-right-radius:4px;color:#cce8ff}
+.bubble.bot{background:var(--card);border:1px solid var(--bd);border-bottom-left-radius:4px;color:var(--tx)}
+.bubble.err{border-color:rgba(255,71,87,.35);background:rgba(255,71,87,.06);color:#ff8a95}
+.bubble.filtered{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06);color:#fcd34d}
+#typing{display:none;align-items:flex-start;gap:12px}
+#typing .dots{display:flex;gap:5px;padding:14px 18px;background:var(--card);border:1px solid var(--bd);border-radius:14px;border-bottom-left-radius:4px}
+.td{width:7px;height:7px;background:var(--ac);border-radius:50%;animation:bounce 1.2s infinite;opacity:.5}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-5px);opacity:1}}
+
+/* INPUT */
+#input-bar{padding:16px 24px 20px;border-top:1px solid var(--bd);background:var(--panel);flex-shrink:0}
+#input-form{display:flex;gap:10px;align-items:flex-end;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px 12px;transition:border-color .2s}
+#input-form:focus-within{border-color:rgba(0,212,255,.4);box-shadow:0 0 0 3px rgba(0,212,255,.06)}
+#user-input{flex:1;background:transparent;border:none;outline:none;color:var(--tx);font-family:'Syne',sans-serif;font-size:14px;resize:none;max-height:120px;line-height:1.5;padding:2px 0}
+#user-input::placeholder{color:var(--muted)}
+#send-btn{background:linear-gradient(135deg,var(--ac),#0891b2);border:none;color:#000;width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+#send-btn:hover{transform:scale(1.05);box-shadow:0 0 14px rgba(0,212,255,.4)}
+#send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.hint{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:center;margin-top:8px;letter-spacing:.05em}
+
+@media(max-width:640px){#sidebar{width:260px;min-width:260px;position:absolute;z-index:100;height:100vh}#sidebar.collapsed{width:0;min-width:0}#chat-win{padding:16px}.bwrap{max-width:86%}}
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="sb-head">
+    <span class="sb-title">📋 Chat History</span>
+    <button class="clear-btn" onclick="clearHistory()">🗑 Clear</button>
+  </div>
+  <div id="history-list"><div class="no-history">No history yet.<br>Start chatting!</div></div>
+</aside>
+
+<div id="main">
+  <header id="topbar">
+    <button id="tog-sb" onclick="toggleSidebar()">☰</button>
+    <div class="logo-area">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">Electro<span>Chat</span></div>
+        <div class="logo-sub">Electronics AI Assistant</div>
+      </div>
+    </div>
+    <div class="tb-actions">
+      <button class="new-btn" onclick="newChat()">＋ New Chat</button>
+      <button class="del-chat-btn" id="del-chat-btn" onclick="deleteCurrentChat()" disabled>🗑 Delete Chat</button>
+      <div class="status"><span class="dot"></span> Online</div>
+    </div>
+  </header>
+
+  <div id="chat-win">
+    <div id="welcome">
+      <div class="w-icon">⚡</div>
+      <div class="w-title">Ask Me About Electronics</div>
+      <div class="w-sub">Your AI expert for mobiles, laptops, Bluetooth, TVs, cameras, and all things electronic.</div>
+      <div class="chips">
+        <div class="chip" onclick="sendChip('Best budget smartphone under ₹15000 in 2024?')">📱 Budget Phones</div>
+        <div class="chip" onclick="sendChip('Difference between OLED and AMOLED display?')">🖥 OLED vs AMOLED</div>
+        <div class="chip" onclick="sendChip('Best wireless earbuds for noise cancellation?')">🎧 Earbuds</div>
+        <div class="chip" onclick="sendChip('How to choose a gaming laptop?')">💻 Gaming Laptops</div>
+        <div class="chip" onclick="sendChip('What is Bluetooth 5.3 and its advantages?')">📡 Bluetooth</div>
+        <div class="chip" onclick="sendChip('Best mirrorless camera for beginners?')">📷 Cameras</div>
+      </div>
+    </div>
+    <div id="typing">
+      <div class="av b">⚡</div>
+      <div class="dots"><div class="td"></div><div class="td"></div><div class="td"></div></div>
+    </div>
+  </div>
+
+  <div id="input-bar">
+    <div id="input-form">
+      <textarea id="user-input" rows="1" placeholder="Ask about any electronic device..." maxlength="2000"></textarea>
+      <button id="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+    <div class="hint">Press Enter to send · Shift+Enter for new line · Electronics only</div>
+  </div>
+</div>
+
+<script>
+const sessionId='session_'+Date.now();
+let chatHistory=[],sidebarOpen=true,currentIdx=-1;
+
+const ta=document.getElementById('user-input');
+ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,120)+'px'});
+ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
+
+function toggleSidebar(){sidebarOpen=!sidebarOpen;document.getElementById('sidebar').classList.toggle('collapsed',!sidebarOpen)}
+
+window.addEventListener('DOMContentLoaded',loadHistory);
+
+async function loadHistory(){
+  try{
+    const r=await fetch('/history');
+    const d=await r.json();
+    chatHistory=d;renderSidebar(d);
+    const recent=d.slice(-20);
+    if(recent.length){
+      document.getElementById('welcome').style.display='none';
+      recent.forEach(e=>{addMsg('user',e.user,e.timestamp);addMsg('bot',e.bot,e.timestamp,e.filtered)});
+      currentIdx=d.length-1;setDelBtn(true);scrollBot();
+    }
+  }catch(e){console.error(e)}
+}
+
+function renderSidebar(data){
+  const c=document.getElementById('history-list');
+  if(!data.length){c.innerHTML='<div class="no-history">No history yet.<br>Start chatting!</div>';return}
+  const groups={};
+  data.forEach((e,i)=>{const d=e.timestamp.split(' ')[0];if(!groups[d])groups[d]=[];groups[d].push({...e,idx:i})});
+  c.innerHTML='';
+  Object.keys(groups).reverse().forEach(date=>{
+    const g=document.createElement('div');
+    const lbl=document.createElement('div');lbl.className='date-label';lbl.textContent=fmtDate(date);g.appendChild(lbl);
+    groups[date].slice().reverse().forEach(e=>{
+      const row=document.createElement('div');
+      row.className='h-item'+(e.idx===currentIdx?' active':'');
+      row.id='hi-'+e.idx;
+      const body=document.createElement('div');body.className='h-body';body.onclick=()=>jumpTo(e.idx);
+      if(e.filtered){const b=document.createElement('span');b.className='f-badge';b.textContent='OFF-TOPIC';body.appendChild(b)}
+      const t=document.createElement('div');t.className='h-time';t.textContent=e.timestamp.split(' ')[1];
+      const p=document.createElement('div');p.className='h-preview';p.innerHTML='<strong>You:</strong> '+esc(e.user);
+      body.appendChild(t);body.appendChild(p);
+      const btn=document.createElement('button');btn.className='del-btn';btn.title='Delete';btn.textContent='✕';
+      btn.onclick=ev=>{ev.stopPropagation();delItem(e.idx)};
+      row.appendChild(body);row.appendChild(btn);g.appendChild(row);
+    });
+    c.appendChild(g);
+  });
+}
+
+function fmtDate(d){
+  const today=new Date().toISOString().split('T')[0];
+  const yest=new Date(Date.now()-86400000).toISOString().split('T')[0];
+  if(d===today)return'📅 Today';if(d===yest)return'📅 Yesterday';return'📅 '+d;
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+async function delItem(idx){
+  try{
+    const r=await fetch('/history/'+idx,{method:'DELETE'});
+    const d=await r.json();
+    if(d.status==='deleted'){
+      if(idx===currentIdx)resetWelcome();
+      else if(currentIdx>idx)currentIdx--;
+      const hr=await fetch('/history');chatHistory=await hr.json();renderSidebar(chatHistory);
+    }
+  }catch(e){console.error(e)}
+}
+
+async function deleteCurrentChat(){if(currentIdx===-1){resetWelcome();return}await delItem(currentIdx)}
+
+function newChat(){resetWelcome();document.querySelectorAll('.h-item').forEach(e=>e.classList.remove('active'));ta.focus()}
+
+function resetWelcome(){
+  document.getElementById('chat-win').querySelectorAll('.msg-row').forEach(e=>e.remove());
+  document.getElementById('welcome').style.display='flex';
+  currentIdx=-1;setDelBtn(false);
+}
+
+function setDelBtn(on){document.getElementById('del-chat-btn').disabled=!on}
+
+function jumpTo(idx){
+  const e=chatHistory[idx];if(!e)return;
+  document.getElementById('chat-win').querySelectorAll('.msg-row').forEach(el=>el.remove());
+  document.getElementById('welcome').style.display='none';
+  addMsg('user',e.user,e.timestamp);addMsg('bot',e.bot,e.timestamp,e.filtered);
+  currentIdx=idx;setDelBtn(true);scrollBot();
+  document.querySelectorAll('.h-item').forEach(el=>el.classList.remove('active'));
+  const row=document.getElementById('hi-'+idx);if(row)row.classList.add('active');
+}
+
+async function sendMessage(){
+  const msg=ta.value.trim();if(!msg)return;
+  document.getElementById('welcome').style.display='none';
+  ta.value='';ta.style.height='auto';
+  const now=new Date().toLocaleString('sv-SE').replace('T',' ');
+  addMsg('user',msg,now);showTyping(true);
+  document.getElementById('send-btn').disabled=true;
+  try{
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,session_id:sessionId})});
+    const d=await r.json();
+    showTyping(false);document.getElementById('send-btn').disabled=false;
+    if(d.error){addMsg('bot','⚠️ '+d.error,now,false,true)}
+    else{
+      addMsg('bot',d.reply,d.timestamp||now,d.reply.startsWith('⚡ Please ask about electronics only'));
+      const hr=await fetch('/history');chatHistory=await hr.json();
+      currentIdx=chatHistory.length-1;setDelBtn(true);renderSidebar(chatHistory);
+    }
+  }catch(e){
+    showTyping(false);document.getElementById('send-btn').disabled=false;
+    addMsg('bot','⚠️ Network error. Please try again.',now,false,true);
+  }
+  scrollBot();
+}
+
+function sendChip(t){ta.value=t;sendMessage()}
+
+function addMsg(role,text,ts,filtered=false,isErr=false){
+  const win=document.getElementById('chat-win'),typ=document.getElementById('typing');
+  const row=document.createElement('div');row.className='msg-row'+(role==='user'?' user':'');
+  const av=document.createElement('div');av.className='av '+(role==='user'?'u':'b');av.textContent=role==='user'?'👤':'⚡';
+  const wrap=document.createElement('div');wrap.className='bwrap';
+  const t=document.createElement('div');t.className='m-time';t.textContent=ts||'';
+  const b=document.createElement('div');b.className='bubble '+(role==='user'?'user':'bot');
+  if(filtered)b.classList.add('filtered');if(isErr)b.classList.add('err');
+  b.innerHTML=fmtTxt(text);
+  wrap.appendChild(t);wrap.appendChild(b);row.appendChild(av);row.appendChild(wrap);
+  win.insertBefore(row,typ);scrollBot();
+}
+
+function fmtTxt(t){
+  return esc(t)
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/`(.*?)`/g,'<code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px">$1</code>')
+    .replace(/\n/g,'<br>');
+}
+
+function showTyping(s){document.getElementById('typing').style.display=s?'flex':'none'}
+function scrollBot(){const w=document.getElementById('chat-win');w.scrollTop=w.scrollHeight}
+
+async function clearHistory(){
+  if(!confirm('Clear all chat history? This cannot be undone.'))return;
+  await fetch('/clear_history',{method:'POST'});
+  chatHistory=[];resetWelcome();renderSidebar([]);
+}
+</script>
+{% endraw %}
+</body>
+</html>
